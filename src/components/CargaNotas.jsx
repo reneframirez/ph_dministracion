@@ -4,9 +4,9 @@ import {
   Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Paper, IconButton, Typography, Box, Card, CardHeader, Divider, Modal, TextField, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Snackbar, Alert
 } from '@mui/material';
-import CheckIcon from '@mui/icons-material/Check';
-import PersonOff from '@mui/icons-material/Cancel';
-import OpenInBrowser from '@mui/icons-material/Folder';
+import ReportProblem from '@mui/icons-material/ReportProblem';
+import PersonOff from '@mui/icons-material/PersonOff';
+import OpenInBrowser from '@mui/icons-material/OpenInBrowser';
 
 const CargaNotas = () => {
   const [openModal, setOpenModal] = useState(false);
@@ -149,14 +149,20 @@ const CargaNotas = () => {
                     <TableCell>{row.rut}</TableCell>
                     <TableCell>{row.abogado}</TableCell>
                     <TableCell>{row.respuestasCorrectas}</TableCell>
-                    <TableCell>
-                      {row.noRinde ? (
-                        <IconButton onClick={() => handleOpenDialog(row)}>
-                          <PersonOff sx={{ color: 'error.main' }} />
-                        </IconButton>
-                      ) : (
-                        <CheckIcon sx={{ color: 'success.main' }} />
-                      )}
+                    <TableCell align="center" sx={{ verticalAlign: 'middle' }}>
+                    {row.noRinde ? (
+                      <PersonOff sx={{ color: 'error.main' }} />
+                    ) : (
+                      <Button 
+                        variant="outlined" 
+                        color="info" 
+                        size="small" 
+                        onClick={() => handleOpenDialog(row)}
+                        startIcon={<ReportProblem />}
+                      >
+                        Confirmar
+                      </Button>
+                    )}
                     </TableCell>
                     <TableCell>
                       <IconButton onClick={() => handleOpenModal(row)}>
