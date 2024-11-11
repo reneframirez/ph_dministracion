@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import {
   Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Paper, IconButton, Typography, Box, Card, CardHeader, Divider, Modal, TextField, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Snackbar, Alert
 } from '@mui/material';
 import ReportProblem from '@mui/icons-material/ReportProblem';
 import PersonOff from '@mui/icons-material/PersonOff';
-import OpenInBrowser from '@mui/icons-material/OpenInBrowser';
+import axios from '../utils/axiosClient';
+import { API_URLS } from '../config/apiUrls';
+import { useParams } from 'react-router-dom';
 
 const CargaNotas = () => {
+  const { prueba } = useParams(); // Obtiene el parámetro de año de la rutaa
   const [openModal, setOpenModal] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
@@ -16,42 +18,30 @@ const CargaNotas = () => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [rows, setRows] = useState([]);
   const [refresh, setRefresh] = useState(false); // Para refrescar los datos
+  const read = location.state?.read;  
 
-  // Simular la carga de datos desde una API usando useEffect
   useEffect(() => {
-    // Simulamos una llamada a una API con setTimeout
-    setTimeout(() => {
-      const fetchedData = [
-        {
-          fecha: '05-08-2024',
-          rut: '18021798-3',
-          abogado: 'CATHERINE SILVA OSORIO',
-          noRinde: true,
-          abogadoPruebaId: 101,
-          respuestasCorrectas: 100,
-          noAsiste: "T"
-        },
-        {
-          fecha: '06-08-2024',
-          rut: '12345678-9',
-          abogado: 'JOHN DOE',
-          noRinde: false,
-          abogadoPruebaId: 102,
-          respuestasCorrectas: 200,
-          noAsiste: "F"
-        }
-      ];
-      setRows(fetchedData); // Actualizar los datos
-    }, 2000); // Simulamos un retraso de 2 segundos
-  }, [refresh]); // La tabla se refresca cada vez que 'refresh' cambia
+    alert(read)
+
+    const fetchPuntajes = async () => {
+      try {
+        const response = await axios.get(API_URLS.GET_PRUEBAS_PUNTAJES(4, prueba));
+        console.log(response);
+        setRows(response.data);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchPuntajes();
+  }, [refresh]);
 
   const handleNoRindePrueba = async () => {
     try {
-      await axios.post('/api/guardar-no-rinde', {
-        rut: selectedRow.rut,
-        abogado: selectedRow.abogado,
-        noRinde: true,
-      });
+      const response = await axios.post(API_URLS.POST_RESPUESTAS, {
+        abogadoPruebaId: parseInt(selectedRow.abogadoPruebaId, 10), // Convertir a entero
+        noAsiste: "V"
+      });       
       setSnackbar({ open: true, message: 'Datos de no rinde prueba guardados', severity: 'success' });
       setOpenDialog(false);
       setRefresh(!refresh); // Refrescar los datos
@@ -61,18 +51,8 @@ const CargaNotas = () => {
     }
   };
 
-  const handleOpenDialog = (row) => {
-    setSelectedRow(row);
-    setOpenDialog(true);
-  };
-
   const handleCloseDialog = () => {
     setOpenDialog(false);
-  };
-
-  const handleOpenModal = (row) => {
-    setSelectedRow(row);
-    setOpenModal(true);
   };
 
   const handleCloseModal = () => {
@@ -81,26 +61,49 @@ const CargaNotas = () => {
   };
 
   // Función para validar que solo se introduzcan números en el campo de puntaje
-  const handlePuntajeChange = (e) => {
+  const handlePuntajeChange = (e, index) => {
     const value = e.target.value;
     if (/^\d*$/.test(value)) {
-      setPuntaje(value); // Solo permite números
+      const updatedRows = [...rows];
+      updatedRows[index].puntajePrueba = value; // Actualizar el puntaje en la fila específica
+      setRows(updatedRows);
     }
   };
 
-  const handleGuardarPuntaje = async () => {
-    try {
-      /*await axios.post('/api/guardar-puntaje', {
-        noAsiste: "F",
-        abogadoPruebaId: selectedRow.abogadoPruebaId,
-        puntajePrueba: puntaje,
-      });*/
-      setSnackbar({ open: true, message: 'Puntaje guardado exitosamente', severity: 'success' });
-      handleCloseModal();
-      setRefresh(!refresh); // Refrescar los datos
-    } catch (error) {
-      console.error('Error al guardar puntaje', error);
-      setSnackbar({ open: true, message: 'Error al guardar el puntaje', severity: 'error' });
+  const handleOpenDialog = (row) => {
+    setSelectedRow(row);
+    setOpenDialog(true);
+  };
+
+  
+  // Captura Enter, simula el POST y avanza al siguiente campo
+  const handleKeyDown = async (e, index) => {
+    if (e.key === 'Enter') {
+      e.preventDefault(); // Evitar el submit del formulario
+
+      try {
+        const response = await axios.post(API_URLS.POST_RESPUESTAS, {
+          abogadoPruebaId: rows[index].abogadoPruebaId,
+          puntajePrueba: rows[index].puntajePrueba,
+          noAsiste: "F"
+        });        
+        /* await axios.post('/api/guardar-puntaje', {
+          noAsiste: "F",
+          abogadoPruebaId: rows[index].abogadoPruebaId,
+          puntajePrueba: rows[index].puntajePrueba,
+        }); */
+        setRefresh(!refresh); // Refrescar los datos
+        setSnackbar({ open: true, message: 'Puntaje guardado exitosamente', severity: 'success' });
+
+        // Mover el foco al siguiente campo
+        const nextInput = document.querySelector(`[data-index="${index + 1}"]`);
+        if (nextInput) {
+          nextInput.focus();
+        }
+      } catch (error) {
+        console.error('Error al guardar puntaje', error);
+        setSnackbar({ open: true, message: 'Error al guardar el puntaje', severity: 'error' });
+      }
     }
   };
 
@@ -131,13 +134,14 @@ const CargaNotas = () => {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell style={{ fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Nº</TableCell>
-                <TableCell style={{ fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Fecha Rendición</TableCell>
-                <TableCell style={{ fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>RUT</TableCell>
-                <TableCell style={{ fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Abogado</TableCell>
-                <TableCell style={{ fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Respuestas Correctas</TableCell>
-                <TableCell style={{ fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Abogado No Rinde Prueba</TableCell>
-                <TableCell style={{ fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Acción</TableCell>
+                <TableCell style={{ fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Nº<br /></TableCell>
+                <TableCell style={{ fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Fecha<br />Rendición</TableCell>
+                <TableCell style={{ fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>RUT<br /><br /></TableCell>
+                <TableCell style={{ fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Abogado<br /><br /></TableCell>
+                <TableCell style={{ fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Abogado No Rinde Prueba<br /><br /></TableCell>
+                <TableCell style={{ fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Respuestas Correctas<br /><Typography variant="caption" color="textSecondary">
+                        Ingrese la nota y presione Enter para grabar y continuar
+                      </Typography>   </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -145,29 +149,37 @@ const CargaNotas = () => {
                 rows.map((row, index) => (
                   <TableRow key={index} hover>
                     <TableCell>{index + 1}</TableCell>
-                    <TableCell>{row.fecha}</TableCell>
-                    <TableCell>{row.rut}</TableCell>
-                    <TableCell>{row.abogado}</TableCell>
-                    <TableCell>{row.respuestasCorrectas}</TableCell>
+                    <TableCell>{row.fechaPrueba}</TableCell>
+                    <TableCell>{row.rutPersona}</TableCell>
+                    <TableCell>{`${row.nomPersona} ${row.appPersona} ${row.apmPersona}`}</TableCell>
                     <TableCell align="center" sx={{ verticalAlign: 'middle' }}>
-                    {row.noRinde ? (
-                      <PersonOff sx={{ color: 'error.main' }} />
-                    ) : (
-                      <Button 
-                        variant="outlined" 
-                        color="info" 
-                        size="small" 
-                        onClick={() => handleOpenDialog(row)}
-                        startIcon={<ReportProblem />}
-                      >
-                        Confirmar
-                      </Button>
-                    )}
+                      {row.abogadoEstadoId===3 ? (
+                        <PersonOff sx={{ color: 'error.main' }} />
+                      ) : (
+                        <Button
+                          variant="outlined"
+                          color="info"
+                          size="small"
+                          onClick={() => handleOpenDialog(row)}
+                          startIcon={<ReportProblem />}
+                          disabled={read === 'R'} 
+                        >
+                          Confirmar
+                        </Button>
+                      )}
                     </TableCell>
                     <TableCell>
-                      <IconButton onClick={() => handleOpenModal(row)}>
-                        <OpenInBrowser sx={{ color: '#FF6F61' }} />
-                      </IconButton>
+                      <TextField
+                        label="Puntaje"
+                        fullWidth
+                        size="small"
+                        margin="normal"
+                        value={row.puntajePrueba}
+                        disabled={row.abogadoEstadoId === 3 || read === 'R'} 
+                        onChange={(e) => handlePuntajeChange(e, index)} // Validación numérica
+                        onKeyDown={(e) => handleKeyDown(e, index)} // Evento para capturar Enter
+                        inputProps={{ 'data-index': index }} // Agregar data-index para identificar el campo
+                      />                  
                     </TableCell>
                   </TableRow>
                 ))
@@ -190,14 +202,11 @@ const CargaNotas = () => {
       </Card>
 
       {/* Dialog de confirmación */}
-      <Dialog
-        open={openDialog}
-        onClose={handleCloseDialog}
-      >
+      <Dialog open={openDialog} onClose={handleCloseDialog}>
         <DialogTitle>Confirmar acción</DialogTitle>
-        <DialogContent>
+        <DialogContent> 
           <DialogContentText>
-            ¿Estás seguro de que el abogado {selectedRow?.abogado} no rinde la prueba?
+             {`¿Estás seguro de que el abogado ${selectedRow?.nomPersona} ${selectedRow?.appPersona} no rinde la prueba?`}  
           </DialogContentText>
         </DialogContent>
         <DialogActions>
@@ -208,47 +217,12 @@ const CargaNotas = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Modal para ingresar el puntaje */}
-      <Modal open={openModal} onClose={handleCloseModal}>
-        <Box
-          sx={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: 400,
-            bgcolor: 'background.paper',
-            border: '2px solid #000',
-            boxShadow: 24,
-            p: 4,
-          }}
-        >
-          <Typography variant="h6" component="h2">
-            Ingresar Puntaje
-          </Typography>
-          <TextField
-            label="Puntaje"
-            fullWidth
-            margin="normal"
-            value={puntaje}
-            onChange={handlePuntajeChange} // Validación numérica
-          />
-          <Box display="flex" justifyContent="space-between" mt={2}>
-          <Button variant="outlined" color="error" onClick={handleCloseModal}>
-              Cerrar
-            </Button>            
-            <Button variant="contained" color="primary" onClick={handleGuardarPuntaje}>
-              Guardar
-            </Button>
-          </Box>
-        </Box>
-      </Modal>
-
       {/* Snackbar de alerta */}
-      <Snackbar
+      <Snackbar 
         open={snackbar.open}
         autoHideDuration={4000}
         onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }} // Posicionar en la parte superior derecha
       >
         <Alert onClose={handleCloseSnackbar} severity={snackbar.severity}>
           {snackbar.message}

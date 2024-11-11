@@ -10,6 +10,21 @@ import {
 import { useQueryClient } from '@tanstack/react-query'
 
 const PerfilContext = createContext()
+const ProcesoContext = createContext();
+
+export const ProcesoProvider = ({ children }) => {
+  const [procesoId, setProcesoId] = useState(null);
+
+  return (
+    <ProcesoContext.Provider value={{ procesoId, setProcesoId }}>
+      {children}
+    </ProcesoContext.Provider>
+  );
+};
+
+export const useProcesoContext = () => {
+  return useContext(ProcesoContext);
+};
 
 const SesionExpiradaProvider = ({ children }) => {
 	const [sesionExpirada, setSesionExpirada] = React.useState(false)
